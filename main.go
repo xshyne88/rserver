@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"math/rand"
 	"net"
 	"time"
 
@@ -72,16 +73,17 @@ func handleConn(conn *grpc.ClientConn) {
 	done := make(chan bool)
 
 	go func() {
-		req := pb.CommandRequest{Id: xid.New().String(), CommandType: "Restart"}
-		if err := stream.Send(&req); err != nil {
-			log.Fatalf("can not send %v", err)
+		for i := 0; i < 15; i++ {
+			time.Sleep(time.Millisecond * 1200)
+			req := pb.CommandRequest{Id: xid.New().String(), CommandType: getRandomCommand()}
+			if err := stream.Send(&req); err != nil {
+				log.Fatalf("can not send %v", err)
+			}
+			log.Printf("%s command sent", req.CommandType)
 		}
-		log.Printf("%d sent", req.Id)
-		time.Sleep(time.Millisecond * 200)
-
-		// if err := stream.CloseSend(); err != nil {
-		// 	log.Println(err)
-		// }
+		if err := stream.CloseSend(); err != nil {
+			log.Println(err)
+		}
 	}()
 
 	go func() {
@@ -99,5 +101,18 @@ func handleConn(conn *grpc.ClientConn) {
 func checkError(err error, resp string) {
 	if err != nil {
 		log.Fatal(resp, err)
+	}
+}
+
+func getRandomCommand() string {
+	num := rand.Intn(3)
+
+	switch num {
+	case 1:
+		return "Restart"
+	case 2:
+		return "Shut Down"
+	default:
+		return "Start Up"
 	}
 }
