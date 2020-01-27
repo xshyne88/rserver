@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option go_package = "protobuf";
+package communication;
+
+service CommandIssuer {
+  rpc SendCommands (stream CommandRequest) returns (stream CommandResponse) {}
+}
+
+message CommandRequest {
+  string id = 1;
+  string commandType = 2;
+}
+
+message CommandResponse {
+  string id = 1;
+  bool acknowledged = 2;
+  string payload = 3;
+}
