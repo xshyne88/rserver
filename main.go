@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -13,19 +14,16 @@ import (
 	"google.golang.org/grpc"
 )
 
-// input := make(chan string)
-// go inputCommand(input)
-
-// func inputCommand(input chan<- string) {
-// 	for {
-// 		var command string
-// 		_, err := fmt.Scanf("%s\n", &command)
-// 		if err != nil {
-// 			panic(err)
-// 		}
-// 		input <- command
-// 	}
-// }
+func inputCommand(input chan<- string) {
+	for {
+		var command string
+		_, err := fmt.Scanf("%s", &command)
+		if err != nil {
+			panic(err)
+		}
+		input <- command
+	}
+}
 
 func main() {
 	log.Println("Server started.")
@@ -59,11 +57,13 @@ func main() {
 			log.Fatalf("did not connect: %s", err)
 		}
 
-		go handleConn(conn)
+		input := make(chan string)
+		go inputCommand(input)
+		go handleConn(conn, input)
 	}
 }
 
-func handleConn(conn *grpc.ClientConn) {
+func handleConn(conn *grpc.ClientConn, input <-chan string) {
 	defer conn.Close()
 	client := pb.NewCommandIssuerClient(conn)
 	stream, err := client.SendCommands(context.Background())
@@ -71,6 +71,17 @@ func handleConn(conn *grpc.ClientConn) {
 
 	ctx := stream.Context()
 	done := make(chan bool)
+
+	for {
+		select {
+		case i := <-input:
+			req := pb.CommandRequest{Id: xid.New().String(), CommandType: i}
+			if err := stream.Send(&req); err != nil {
+				log.Fatalf("can not send %v", err)
+			}
+		default:
+		}
+	}
 
 	go func() {
 		for i := 0; i < 15; i++ {
